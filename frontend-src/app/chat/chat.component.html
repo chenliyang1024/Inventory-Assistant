@@ -1,0 +1,36 @@
+<div class="app">
+  <header>
+    <h1>Inventory Assistant</h1>
+    <p class="subtitle">Ask about stock, supplier terms, or place an order.</p>
+  </header>
+
+  <main class="messages">
+    @for (msg of chat.messages(); track $index) {
+      <div class="msg" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+        {{ msg.content }}
+      </div>
+    }
+
+    @if (chat.pending()) {
+      <div class="msg pending">Thinking…</div>
+    }
+
+    @if (chat.error()) {
+      <div class="msg error">{{ chat.error() }}</div>
+    }
+
+    <div #scrollAnchor></div>
+  </main>
+
+  <form class="chat-form" (ngSubmit)="submit()">
+    <input
+      name="draft"
+      type="text"
+      placeholder="Ask a question…"
+      autocomplete="off"
+      [(ngModel)]="draft"
+      [disabled]="chat.pending()"
+    />
+    <button type="submit" [disabled]="chat.pending() || !draft.trim()">Send</button>
+  </form>
+</div>
