@@ -17,6 +17,13 @@ header {
   border-bottom: 1px solid #ddd;
 }
 
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 header h1 {
   margin: 0;
   font-size: 20px;
@@ -26,6 +33,22 @@ header h1 {
   margin: 4px 0 0;
   color: #666;
   font-size: 14px;
+}
+
+.reset-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: white;
+  color: #444;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.reset-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .messages {

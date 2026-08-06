@@ -74,6 +74,33 @@ export async function runIngest(db: Firestore): Promise<{ materials: number; sup
   return { materials: materials.length, suppliers: data.suppliers.length };
 }
 
+/** Deletes every doc in the orders collection. Used by the demo reset button
+ * so a fresh session starts with no reservations or order history. */
+async function clearOrders(db: Firestore): Promise<number> {
+  const snap = await db.collection('orders').get();
+  const CHUNK = 400;
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += CHUNK) {
+    const batch = db.batch();
+    for (const doc of docs.slice(i, i + CHUNK)) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+  }
+  return docs.length;
+}
+
+/** Full demo reset: reload the catalogue from JSON (undoes any qty_reserved
+ * drift from placed orders) and clear order history, so the demo looks
+ * exactly like a fresh ingest. */
+export async function resetDemoData(
+  db: Firestore
+): Promise<{ materials: number; suppliers: number; ordersCleared: number }> {
+  const { materials, suppliers } = await runIngest(db);
+  const ordersCleared = await clearOrders(db);
+  return { materials, suppliers, ordersCleared };
+}
+
 async function main() {
   initializeApp({ credential: applicationDefault() });
   const { materials, suppliers } = await runIngest(getFirestore());

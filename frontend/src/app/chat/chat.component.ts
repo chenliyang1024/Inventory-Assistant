@@ -22,6 +22,13 @@ export class ChatComponent implements AfterViewChecked {
     await this.chat.send(text);
   }
 
+  async resetDemo(): Promise<void> {
+    if (!confirm('Reset the demo data? This clears all orders and reservations back to the original catalogue.')) {
+      return;
+    }
+    await this.chat.resetDemo();
+  }
+
   ngAfterViewChecked(): void {
     this.scrollAnchor?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }

@@ -3,9 +3,11 @@ import { defineSecret } from 'firebase-functions/params';
 import { initializeApp } from 'firebase-admin/app';
 import express, { Request, Response } from 'express';
 
+import { getFirestore } from 'firebase-admin/firestore';
 import { FirestoreRepo } from './repos/firestoreRepo';
 import { checkStock, searchMaterials, getSupplierForMaterial, placeOrder } from './queries';
 import { chat as runChat } from './llm';
+import { resetDemoData } from './ingest';
 
 initializeApp();
 
@@ -61,6 +63,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     res.json({ reply: result.reply, tool_calls: result.toolCalls });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'chat failed' });
+  }
+});
+
+// Demo-only: reloads the catalogue from inventory_data.json and clears order
+// history, undoing whatever chat/order testing has done to the live data.
+app.post('/api/admin/reset', async (_req: Request, res: Response) => {
+  try {
+    const result = await resetDemoData(getFirestore());
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'reset failed' });
   }
 });
 

@@ -1,7 +1,19 @@
 <div class="app">
   <header>
-    <h1>Inventory Assistant</h1>
-    <p class="subtitle">Ask about stock, supplier terms, or place an order.</p>
+    <div class="header-row">
+      <div>
+        <h1>Inventory Assistant</h1>
+        <p class="subtitle">Ask about stock, supplier terms, or place an order.</p>
+      </div>
+      <button
+        type="button"
+        class="reset-btn"
+        [disabled]="chat.resetting() || chat.pending()"
+        (click)="resetDemo()"
+      >
+        {{ chat.resetting() ? 'Resetting…' : 'Reset Demo Data' }}
+      </button>
+    </div>
   </header>
 
   <main class="messages">

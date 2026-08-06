@@ -24,6 +24,7 @@ export class ChatService {
     },
   ]);
   readonly pending = signal(false);
+  readonly resetting = signal(false);
   readonly error = signal<string | null>(null);
 
   // History sent back to the API on each turn, in Claude's message format.
@@ -52,6 +53,27 @@ export class ChatService {
       this.error.set(err?.error?.error || 'Something went wrong talking to the assistant.');
     } finally {
       this.pending.set(false);
+    }
+  }
+
+  async resetDemo(): Promise<void> {
+    if (this.resetting() || this.pending()) return;
+    this.error.set(null);
+    this.resetting.set(true);
+    try {
+      await firstValueFrom(this.http.post('/api/admin/reset', {}));
+      this.apiHistory = [];
+      this.messages.set([
+        {
+          role: 'assistant',
+          content:
+            'Demo data has been reset to the original catalogue — all orders and reservations cleared. Try: "Do we have any W12x40 beams available?"',
+        },
+      ]);
+    } catch (err: any) {
+      this.error.set(err?.error?.error || 'Reset failed.');
+    } finally {
+      this.resetting.set(false);
     }
   }
 }
