@@ -4,6 +4,7 @@ A chat assistant for a construction material supplier: checks stock, looks
 up supplier terms, and places orders against a live inventory dataset.
 
 **Live demo:** https://inventory-assistant-ed979.web.app
+
 **Repo:** https://github.com/chenliyang1024/Inventory-Assistant
 
 See [`docs/flowchart.md`](docs/flowchart.md) for the system diagram and a
@@ -99,7 +100,7 @@ node lib/ingest.js
 ```
 
 Into the **local Firestore emulator** instead (for step 5 below — this does
-*not* touch real Firestore, and needs no `gcloud`/ADC at all):
+_not_ touch real Firestore, and needs no `gcloud`/ADC at all):
 
 ```bash
 cd functions
@@ -228,6 +229,12 @@ know the function's actual URL. One Express app behind one function (not
 one Cloud Function per route) means one cold start covers the whole API
 surface rather than paying it per endpoint.
 
+Angular + Firebase specifically because that toolchain was already set up
+and working locally — no new environment to configure for a time-boxed
+assignment, and Firebase Hosting + Functions + Firestore covers static
+hosting, the API, and a persistent database from one deploy target instead
+of assembling separate services.
+
 ### LLM / application-code boundary
 
 The LLM only does two things: **picks which deterministic tool to call and
@@ -243,7 +250,7 @@ logic is identical in tests and in production; only the storage mechanics
 differ.
 
 Order placement gets one more layer: `evaluateOrder` (the rule check) is
-re-run *inside* the Firestore transaction against freshly-read data, so two
+re-run _inside_ the Firestore transaction against freshly-read data, so two
 concurrent orders racing for the same last unit can't both succeed.
 
 ## Known limitations
