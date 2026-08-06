@@ -3,6 +3,9 @@
 A chat assistant for a construction material supplier: checks stock, looks
 up supplier terms, and places orders against a live inventory dataset.
 
+**Live demo:** https://inventory-assistant-ed979.web.app
+**Repo:** https://github.com/chenliyang1024/Inventory-Assistant
+
 See [`docs/flowchart.md`](docs/flowchart.md) for the system diagram and a
 trace of all five required queries through the system.
 
