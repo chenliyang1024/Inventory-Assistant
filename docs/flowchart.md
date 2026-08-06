@@ -20,8 +20,8 @@ flowchart TD
     BIZ -->|"read + filter in FirestoreRepo"| FS
     FS -->|documents| BIZ
     BIZ -->|"dict result (e.g. 0 matches)"| TOOLS
-    LLM -->|"phrases the answer using ONLY the tool result"| REPLY
     TOOLS -->|tool result JSON, exact numbers| LLM
+    LLM -->|"phrases the answer using ONLY the tool result"| REPLY
     REPLY --> FN --> HOST --> U
 
     subgraph Ingestion [Separate, one-time/repeatable]
