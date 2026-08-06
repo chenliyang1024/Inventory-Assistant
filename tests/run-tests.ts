@@ -50,6 +50,12 @@ test('search finds beam by description', async () => {
   assert.ok(results.some((r) => r.sku === 'STL-W12X40-A992'));
 });
 
+test('search tolerates a plural query term against singular catalogue text', async () => {
+  const repo = loadRepo();
+  const results = await searchMaterials(repo, 'W12x40 beams');
+  assert.ok(results.some((r) => r.sku === 'STL-W12X40-A992'));
+});
+
 test('no 25M epoxy rebar exists (spec trap)', async () => {
   const repo = loadRepo();
   const results = await searchMaterials(repo, '25M epoxy rebar');

@@ -6,12 +6,6 @@ up supplier terms, and places orders against a live inventory dataset.
 See [`docs/flowchart.md`](docs/flowchart.md) for the system diagram and a
 trace of all five required queries through the system.
 
-> This repo ships as source files rather than a fully-generated project,
-> because getting current, correctly-versioned `angular.json`/`package.json`
-> scaffolding requires the actual CLI tools talking to npm — something I
-> couldn't do from where these files were generated. Follow the setup below
-> to scaffold the two projects with the CLIs, then drop these files in.
-
 ## Project layout
 
 ```
@@ -29,48 +23,36 @@ functions/                — Cloud Functions (Node 22, TypeScript)
     ingest.ts                         — repeatable Firestore loader
     index.ts                           — Express app + Cloud Function export
   data/inventory_data.json
-frontend-src/              — Angular source files to drop into `ng new frontend`
+frontend/                  — Angular app (chat UI)
 tests/run-tests.ts         — business logic tests (ts-node, no emulator needed)
 docs/flowchart.md
 ```
 
 ## Setup
 
-### 1. Scaffold the Angular app
-
-```bash
-npm install -g @angular/cli   # if you don't have it
-ng new frontend --style=scss --routing=false --ssr=false
-```
-
-Then copy the contents of `frontend-src/` into `frontend/src/`, merging
-`app.config.ts` into whatever the CLI generated (see the comment at the top
-of that file) rather than overwriting it outright. Also copy
-`frontend-src/proxy.conf.json` to `frontend/proxy.conf.json` and fill in
-your actual Firebase project ID.
+### 1. Install frontend dependencies
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 2. Scaffold Firebase
+### 2. Point Firebase at your project
 
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase init
+firebase use --add
 ```
 
-Pick: **Firestore**, **Functions** (TypeScript, Node 22), **Hosting**
-(point it at `frontend/dist/frontend/browser` — see note below), and
-associate it with your Firebase project. When it asks to overwrite
-`firebase.json`/`firestore.rules`, say no and use the ones in this repo
-instead (or diff and merge).
+`firebase use --add` prompts you to pick a Firebase project and links it in
+`.firebaserc`. `firebase.json`, `firestore.rules`, and
+`firestore.indexes.json` are already configured for this project's
+Firestore/Functions/Hosting layout — no `firebase init` needed.
 
-Then copy `functions/src/*`, `functions/data/`, and merge
-`functions/package.json`/`functions/tsconfig.json` with whatever the wizard
-generated.
+If you're using your own Firebase project rather than the one already
+linked, update the project ID in `frontend/proxy.conf.json`'s `target` to
+match (`http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/api`).
 
 ```bash
 cd functions
@@ -155,7 +137,7 @@ the same rule-evaluation code the Firestore repo uses:
 npx ts-node tests/run-tests.ts
 ```
 
-18 tests, run against the real `inventory_data.json`, covering the
+19 tests, run against the real `inventory_data.json`, covering the
 over-allocated SKU, the non-existent 25M-epoxy rebar, the discontinued
 steel plate, insufficient-stock rejection, and the rebar supplier lookup —
 i.e., all five required queries plus the edge cases they're built around.
@@ -220,8 +202,10 @@ meaningfully different situation for a warehouse worker.
 ## Assumptions made where the spec was silent
 
 - **Search matching**: loose substring matching across SKU, description,
-  category, and spec grade (all terms must match, case-insensitive). No
-  fuzzy/typo tolerance.
+  category, and spec grade (all terms must match, case-insensitive), with a
+  simple trailing-"s" plural/singular tolerance (e.g. "beams" matches
+  catalogue text containing "beam") — added after the LLM's own search
+  terms hit this exact mismatch in testing. No other fuzzy/typo tolerance.
 - **Currency**: dataset is already CAD; no conversion added.
 - **Order identity**: no customer/user identity attached to an order — the
   spec doesn't describe multiple customers or auth.
@@ -232,39 +216,24 @@ meaningfully different situation for a warehouse worker.
   supplier), not a separate category→supplier mapping — a coincidence of
   this dataset, not a general rule (see below).
 
-## Design write-up
+## Architecture
 
-### The shape I chose, and what I considered instead
+Angular (static build) on Firebase Hosting, talking to a single Express app
+deployed as one Cloud Function (`api`), backed by Firestore. Hosting
+rewrites route `/api/**` to the function so the frontend never needs to
+know the function's actual URL. One Express app behind one function (not
+one Cloud Function per route) means one cold start covers the whole API
+surface rather than paying it per endpoint.
 
-**Chosen**: Angular (static build) on Firebase Hosting, talking to a single
-Express app deployed as one Cloud Function (`api`), backed by Firestore.
-Hosting rewrites route `/api/**` to the function so the frontend never
-needs to know the function's actual URL.
-
-**Considered and rejected**:
-- *A Python/Flask + SQLite version* — this is genuinely where I started
-  (see earlier in this conversation). I rebuilt it on Firebase once you
-  specified Angular + Firebase Hosting + Firebase Functions as the target
-  stack; the core business logic and LLM tool-use design carried over
-  almost unchanged, which is itself a useful signal that the rule layer
-  was properly decoupled from storage in the first version.
-- *One Cloud Function per route* instead of one Express app. Firestore/
-  Functions cold starts are per-function; consolidating into one Express
-  app behind one function means one cold start covers the whole API
-  surface instead of paying it per-endpoint on a lightly-trafficked demo.
-- *Letting the LLM see the whole catalogue JSON in-context.* Ruled out by
-  the spec's "every number must come from your database" requirement — an
-  LLM reasoning freely over inlined JSON can transpose a digit or round an
-  over-allocated figure to zero without flagging it. See the tool-use
-  design below.
-
-### Where the boundary sits between the LLM and my own code
+### LLM / application-code boundary
 
 The LLM only does two things: **picks which deterministic tool to call and
 with what arguments**, and **phrases the final sentence using the tool's
 returned JSON**. It never computes availability, never decides whether an
-order is valid, and never sees the raw catalogue. That logic lives entirely
-in `business.ts`/`queries.ts` — plain TypeScript, no LLM awareness, unit
+order is valid, and never sees the raw catalogue — that's ruled out by the
+requirement that every number come from the database, not from an LLM
+reasoning freely over inlined JSON. That logic lives entirely in
+`business.ts`/`queries.ts` — plain TypeScript, no LLM awareness, unit
 tested directly against the real dataset via an in-memory repo. The
 Firestore-backed repo implements the exact same interface, so the rule
 logic is identical in tests and in production; only the storage mechanics
@@ -272,16 +241,15 @@ differ.
 
 Order placement gets one more layer: `evaluateOrder` (the rule check) is
 re-run *inside* the Firestore transaction against freshly-read data, so two
-concurrent orders racing for the same last unit can't both succeed — a real
-improvement over a naive read-then-write.
+concurrent orders racing for the same last unit can't both succeed.
 
-### What I'd expect to break first under real load or messier data
+## Known limitations
 
 1. **Search quality.** Loading the whole collection and filtering in JS
-   works at 77 SKUs but won't scale past a few thousand — I'd move to
+   works at 77 SKUs but won't scale past a few thousand, or once query
+   phrasing gets messier than "the term is literally in the description."
    Algolia/Typesense (common Firestore pairings) or precomputed search
-   tokens once the catalogue grows, or once query phrasing gets messier
-   than "the term is literally in the description."
+   tokens are the fix once the catalogue grows.
 2. **The category→supplier assumption.** This dataset happens to have one
    supplier per category, so resolving "our rebar supplier" via the SKU
    works. A real catalogue with multiple suppliers per category would need
@@ -295,7 +263,7 @@ improvement over a naive read-then-write.
 5. **Cold starts** on the Cloud Function under bursty traffic; a min-instance
    setting would fix latency at the cost of always-on billing.
 
-## What I'd do with another week
+## Possible future improvements
 
 - Real search (Algolia/Typesense) instead of full-collection JS filtering.
 - A proper category→default-supplier concept instead of the SKU-based

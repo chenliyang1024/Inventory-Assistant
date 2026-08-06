@@ -1,0 +1,7 @@
+{
+  "/api": {
+    "target": "http://127.0.0.1:5001/inventory-assistant-ed979/us-central1/api",
+    "secure": false,
+    "pathRewrite": { "^/api": "/api" }
+  }
+}

@@ -25,6 +25,15 @@ export function toMaterialView(m: Material): MaterialView {
   };
 }
 
+/** A term matches if it's a direct substring, or matches after stripping a trailing "s"
+ * (so "beams" matches catalogue text containing "beam"). Simple plural/singular
+ * tolerance only -- not general fuzzy matching. */
+function termMatches(haystack: string, term: string): boolean {
+  if (haystack.includes(term)) return true;
+  if (term.length > 1 && term.endsWith('s') && haystack.includes(term.slice(0, -1))) return true;
+  return false;
+}
+
 /** Loose, case-insensitive, all-terms-must-match substring search. */
 export function materialMatchesQuery(m: Material, query: string, category?: string): boolean {
   if (category && m.category !== category) return false;
@@ -34,7 +43,7 @@ export function materialMatchesQuery(m: Material, query: string, category?: stri
     .filter((v): v is string => !!v)
     .join(' ')
     .toLowerCase();
-  return terms.every((t) => haystack.includes(t));
+  return terms.every((t) => termMatches(haystack, t));
 }
 
 export interface OrderDecision {

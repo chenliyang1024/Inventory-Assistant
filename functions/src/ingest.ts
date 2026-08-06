@@ -17,14 +17,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 const DATA_PATH = path.join(__dirname, '..', 'data', 'inventory_data.json');
 
-async function main() {
-  initializeApp({ credential: applicationDefault() });
-  const db = getFirestore();
-
+export async function runIngest(db: Firestore): Promise<{ materials: number; suppliers: number }> {
   const raw = fs.readFileSync(DATA_PATH, 'utf-8');
   const data = JSON.parse(raw);
 
@@ -74,10 +71,18 @@ async function main() {
     notes: data.meta?.notes ?? null,
   });
 
-  console.log(`Ingested ${materials.length} materials and ${data.suppliers.length} suppliers.`);
+  return { materials: materials.length, suppliers: data.suppliers.length };
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  initializeApp({ credential: applicationDefault() });
+  const { materials, suppliers } = await runIngest(getFirestore());
+  console.log(`Ingested ${materials} materials and ${suppliers} suppliers.`);
+}
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

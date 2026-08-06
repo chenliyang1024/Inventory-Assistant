@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A chat assistant for a construction material supplier (Angular frontend + Firebase Functions/Firestore backend) that checks stock, looks up supplier terms, and places orders against a live inventory dataset, via a Gemini tool-use loop.
 
-**This repo ships as source files, not a scaffolded project.** There is no root `package.json`, no `node_modules`, no `frontend/` directory yet — `frontend-src/` holds files meant to be dropped into a `ng new`-generated Angular app. See "Setup" in README.md for the full scaffolding steps (`ng new frontend`, `firebase init`, merging `functions/package.json`). Do not assume `npm install` works from the repo root; it must happen inside `functions/` (and inside `frontend/` once scaffolded).
+**There is no root `package.json`.** `frontend/` (Angular CLI project) and `functions/` (Cloud Functions) are independent npm projects — `npm install` must be run inside each separately, never from the repo root.
 
 ## Commands
 
@@ -29,13 +29,14 @@ Business-logic tests (no emulator, no Firestore needed — run from repo root):
 npx ts-node tests/run-tests.ts
 ```
 
-This runs 15 assertions against the real `functions/data/inventory_data.json` via `InMemoryRepo`, covering all required queries plus edge cases (over-allocated SKU, non-existent item, discontinued item, insufficient stock, supplier lookup). There is no test runner framework (no Jest/Mocha) — `tests/run-tests.ts` is a self-contained script with its own `test()`/assert harness; add new cases by calling `test('name', async () => {...})` in that file.
+This runs 19 assertions against the real `functions/data/inventory_data.json` via `InMemoryRepo`, covering all required queries plus edge cases (over-allocated SKU, non-existent item, discontinued item, insufficient stock, supplier lookup, plural/singular search matching). There is no test runner framework (no Jest/Mocha) — `tests/run-tests.ts` is a self-contained script with its own `test()`/assert harness; add new cases by calling `test('name', async () => {...})` in that file.
 
-Frontend, once scaffolded into `frontend/`:
+Frontend:
 
 ```bash
 cd frontend
-ng serve --proxy-config proxy.conf.json   # proxies /api/** to the emulator; see frontend-src/proxy.conf.json
+npm install
+ng serve --proxy-config proxy.conf.json   # proxies /api/** to the emulator; see frontend/proxy.conf.json
 ```
 
 ## Architecture
