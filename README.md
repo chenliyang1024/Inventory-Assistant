@@ -38,34 +38,34 @@ curl -X POST "$BASE/api/orders" -H "Content-Type: application/json" \
 
 ```mermaid
 flowchart TD
-    U[User types a question in the Angular chat UI]
-    HOST[Firebase Hosting — serves the built Angular app]
+    U["User types a question in the Angular chat UI"]
+    HOST["Firebase Hosting — serves the built Angular app"]
     REWRITE["/api/** rewrite rule"]
     FN["Cloud Function 'api' — Express app (Node 22)"]
-    LLM[Gemini — Developer API with tool use]
+    LLM["Gemini — Developer API with tool use"]
     TOOLS["Tool dispatcher — functions/src/llm.ts"]
     BIZ["Business logic — functions/src/business.ts + queries.ts"]
-    FS[(Firestore — suppliers, materials, orders)]
-    REPLY[Final natural-language reply]
+    FS[("Firestore — suppliers, materials, orders")]
+    REPLY["Final natural-language reply"]
 
     U -->|"How many 25M epoxy rebars do we have?"| HOST
     HOST --> REWRITE --> FN
-    FN -->|POST /api/chat, message + history| LLM
+    FN -->|"POST /api/chat with message and history"| LLM
     LLM -->|"decides: call search_inventory('25M epoxy rebar')"| TOOLS
     TOOLS --> BIZ
-    BIZ -->|"read + filter in FirestoreRepo"| FS
-    FS -->|documents| BIZ
-    BIZ -->|"dict result (e.g. 0 matches)"| TOOLS
+    BIZ -->|"read and filter in FirestoreRepo"| FS
+    FS -->|"documents"| BIZ
+    BIZ -->|"result dict, e.g. 0 matches"| TOOLS
     LLM -->|"phrases the answer using ONLY the tool result"| REPLY
-    TOOLS -->|tool result JSON, exact numbers| LLM
+    TOOLS -->|"tool result JSON with exact numbers"| LLM
     REPLY --> FN --> HOST --> U
 
-    subgraph Ingestion [Separate, one-time/repeatable]
-        JSON[inventory_data.json] -->|"node lib/ingest.js"| FS
+    subgraph Ingestion ["Separate, one-time or repeatable"]
+        JSON["inventory_data.json"] -->|"node lib/ingest.js"| FS
     end
 
-    subgraph OrderPlacement [Order placement — atomic]
-        FN2["POST /api/orders or place_order tool"] -->|"Firestore transaction:\nread material, evaluate rules,\nwrite reservation + order doc"| FS
+    subgraph OrderPlacement ["Order placement, atomic"]
+        FN2["POST /api/orders or place_order tool"] -->|"Firestore transaction: read material, evaluate rules, write reservation and order doc"| FS
     end
 ```
 
