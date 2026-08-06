@@ -7,6 +7,33 @@ up supplier terms, and places orders against a live inventory dataset.
 
 **Repo:** https://github.com/chenliyang1024/Inventory-Assistant
 
+## API endpoints
+
+The chat UI only calls `/api/chat` and `/api/admin/reset` — everything
+below is a separate, direct REST surface over the same business logic, for
+checking numbers without going through the LLM. All examples hit the live
+demo.
+
+| Method | Path | What it does |
+|---|---|---|
+| `GET` | `/api/materials?q=<query>&category=<category>` | Search the catalogue |
+| `GET` | `/api/materials/:sku` | Look up one SKU, with derived availability |
+| `GET` | `/api/suppliers/:supplierId` | Supplier payment terms and lead time |
+| `POST` | `/api/orders` | Place an order — `{"sku": "...", "quantity": N}` |
+| `POST` | `/api/chat` | Chat with the assistant — `{"message": "...", "history": []}` |
+| `POST` | `/api/admin/reset` | Reload the catalogue from JSON, clear order history |
+| `GET` | `/api/health` | `{"status": "ok"}` |
+
+```bash
+BASE=https://inventory-assistant-ed979.web.app
+
+curl "$BASE/api/materials?q=rebar"
+curl "$BASE/api/materials/STL-W12X40-A992"
+curl "$BASE/api/suppliers/SUP-002"
+curl -X POST "$BASE/api/orders" -H "Content-Type: application/json" \
+  -d '{"sku":"STL-PL12-A36","quantity":2}'
+```
+
 ## System flowchart
 
 ```mermaid
